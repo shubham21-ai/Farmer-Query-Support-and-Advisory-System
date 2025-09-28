@@ -1,9 +1,7 @@
 import os
-import io
-import sys
-import json
 import tempfile
 import logging
+import sys
 from typing import Optional, Dict, Any
 import streamlit as st
 from contextlib import redirect_stdout
@@ -11,7 +9,6 @@ from contextlib import redirect_stdout
 # Import all our agents and components
 from router_agent import RouterAgent, AgentType
 from synthesizer_agent import SynthesizerAgent
-from google_apis import GoogleAPIs
 
 # Import specialized agents
 from disease_diagnosis import CropDiseaseAgent
@@ -23,6 +20,44 @@ from price_detection_agent import MarketPriceDetectionAgent
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class CaptureStdout:
+    """Helper class to capture stdout for logging"""
+    def __init__(self, container):
+        self.container = container
+        self.placeholder = container.empty()
+        self.output = []
+        self.max_lines = 20  # Limit output lines for better performance
+    
+    def write(self, text):
+        if text.strip():
+            self.output.append(text)
+            # Keep only the last max_lines for performance
+            if len(self.output) > self.max_lines:
+                self.output = self.output[-self.max_lines:]
+            try:
+                self.placeholder.code(''.join(self.output), language="text")
+            except Exception:
+                try:
+                    self.placeholder = self.container.empty()
+                    self.placeholder.code(''.join(self.output), language="text")
+                except:
+                    pass
+    
+    def flush(self):
+        try:
+            if self.output:
+                self.placeholder.code(''.join(self.output), language="text")
+        except:
+            pass
+    
+    def clear(self):
+        """Clear the output display"""
+        try:
+            self.placeholder.empty()
+            self.output = []
+        except:
+            pass
+
 class FarmerAssistantPipeline:
     """Main pipeline that orchestrates all agents and APIs"""
     
@@ -31,7 +66,6 @@ class FarmerAssistantPipeline:
             # Initialize all components
             self.router = RouterAgent()
             self.synthesizer = SynthesizerAgent()
-            self.google_apis = GoogleAPIs()
             
             # Initialize specialized agents
             self.disease_agent = CropDiseaseAgent()
@@ -45,28 +79,29 @@ class FarmerAssistantPipeline:
             logger.error(f"Failed to initialize pipeline: {e}")
             raise
     
-    def process_query(self, query: str, image_path: Optional[str] = None, 
-                     source_language: str = "hi-IN", target_language: str = "hi-IN") -> Dict[str, Any]:
+    def process_query(self, query: str, image_path: Optional[str] = None) -> Dict[str, Any]:
         """
         Process a farmer query through the complete pipeline
         
         Args:
             query: Farmer's query (in English or original language)
             image_path: Optional image file path for disease diagnosis
-            source_language: Source language code for TTS
-            target_language: Target language code for response
             
         Returns:
             Complete processing results
         """
         try:
             logger.info(f"Processing query: {query[:100]}...")
+            print(f"\n[INFO] Processing query: {query[:100]}...")
             
             # Step 1: Route the query
+            print("[STEP 1] Analyzing query and determining appropriate agent...")
             routing_result = self.router.route_query(query, has_image=image_path is not None)
             logger.info(f"Routed to: {routing_result.agent_type.value}")
+            print(f"[STEP 1] Query routed to: {routing_result.agent_type.value} agent")
             
             # Step 2: Execute appropriate agent(s)
+            print("[STEP 2] Executing specialized agricultural agent...")
             agent_results = {}
             
             if routing_result.agent_type == AgentType.DISEASE_DIAGNOSIS:
@@ -107,25 +142,24 @@ class FarmerAssistantPipeline:
                     agent_results["price_detection"] = {"market_analysis": result}
             
             # Step 3: Synthesize results
+            print("[STEP 3] Synthesizing results from all agents...")
             synthesized_response = self.synthesizer.synthesize_results(
                 original_query=query,
                 agent_results=agent_results
             )
+            print("[STEP 3] Results synthesized successfully")
             
-            # Step 4: Convert response to speech (optional)
-            audio_result = None
-            if target_language and not target_language.startswith("en"):
-                audio_result = self.google_apis.process_response_to_speech(
-                    text=synthesized_response.summary,
-                    target_language=target_language
-                )
+            print("[COMPLETE] Query processing completed successfully!")
+            print("=" * 50)
+            print("\n[INFO] Preparing results for display...")
+            print("[INFO] Clearing progress logs...")
+            print("[INFO] Displaying final results...")
             
             return {
                 "success": True,
                 "routing_result": routing_result.to_dict(),
                 "agent_results": agent_results,
                 "synthesized_response": synthesized_response.to_dict(),
-                "audio_response": audio_result,
                 "processing_metadata": {
                     "agents_used": list(agent_results.keys()),
                     "routing_confidence": routing_result.confidence,
@@ -140,94 +174,127 @@ class FarmerAssistantPipeline:
                 "error": str(e),
                 "routing_result": None,
                 "agent_results": {},
-                "synthesized_response": None,
-                "audio_response": None
+                "synthesized_response": None
             }
     
-    def process_voice_query(self, audio_file_path: str, image_path: Optional[str] = None,
-                           source_language: str = "hi-IN", target_language: str = "hi-IN") -> Dict[str, Any]:
-        """
-        Process voice query through complete pipeline
-        
-        Args:
-            audio_file_path: Path to audio file
-            image_path: Optional image file path
-            source_language: Source language code
-            target_language: Target language code
-            
-        Returns:
-            Complete processing results including voice processing
-        """
-        try:
-            logger.info(f"Processing voice query from: {audio_file_path}")
-            
-            # Step 1: Speech to Text and Translation
-            voice_result = self.google_apis.process_voice_query(audio_file_path, source_language)
-            
-            if not voice_result["success"]:
-                return {
-                    "success": False,
-                    "error": f"Voice processing failed: {voice_result.get('error', 'Unknown error')}",
-                    "voice_result": voice_result
-                }
-            
-            # Step 2: Process the translated query
-            translated_query = voice_result["translated_text"]
-            processing_result = self.process_query(
-                query=translated_query,
-                image_path=image_path,
-                source_language=source_language,
-                target_language=target_language
-            )
-            
-            # Add voice processing results
-            processing_result["voice_result"] = voice_result
-            processing_result["original_query"] = voice_result["original_text"]
-            processing_result["translated_query"] = translated_query
-            
-            return processing_result
-            
-        except Exception as e:
-            logger.error(f"Voice query processing error: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "voice_result": None,
-                "processing_result": None
-            }
 
-class CaptureStdout:
-    """Helper class to capture stdout for logging"""
-    def __init__(self, container):
-        self.container = container
-        self.placeholder = container.empty()
-        self.output = []
-    
-    def write(self, text):
-        if text.strip():
-            self.output.append(text)
-            try:
-                self.placeholder.code(''.join(self.output), language="text")
-            except Exception:
-                try:
-                    self.placeholder = self.container.empty()
-                    self.placeholder.code(''.join(self.output), language="text")
-                except:
-                    pass
-    
-    def flush(self):
-        try:
-            if self.output:
-                self.placeholder.code(''.join(self.output), language="text")
-        except:
-            pass
 
 def main():
     """Main Streamlit application"""
-    st.set_page_config(page_title="Farmer Assistant Bot", layout="wide")
+    st.set_page_config(page_title="Kisan Saathi", layout="wide")
     
-    st.title("🌾 Farmer Assistant Bot")
-    st.markdown("**Complete Agricultural Intelligence System with Voice Support**")
+    # Custom CSS for professional styling
+    st.markdown("""
+    <style>
+    .main-header {
+        background: linear-gradient(135deg, #c1ff72 0%, #a8e55c 100%);
+        padding: 2rem;
+        border-radius: 12px;
+        color: #000000;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    .main-header h1 {
+        color: #000000;
+        font-size: 2.5rem;
+        margin: 0;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .main-header p {
+        color: #000000;
+        font-size: 1.1rem;
+        margin: 0.5rem 0 0 0;
+        opacity: 0.8;
+        font-weight: 500;
+    }
+    .status-card {
+        background: #F8F9FA;
+        padding: 1.2rem;
+        border-radius: 10px;
+        border-left: 4px solid #c1ff72;
+        margin: 0.8rem 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .feature-card {
+        background: #FFFFFF;
+        padding: 1.2rem;
+        border-radius: 10px;
+        border: 1px solid #E9ECEF;
+        margin: 0.8rem 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .progress-container {
+        background: #F8F9FA;
+        padding: 1.2rem;
+        border-radius: 10px;
+        border: 1px solid #DEE2E6;
+        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .section-header {
+        color: #c1ff72;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    .success-message {
+        background: #d4f8d4;
+        color: #000000;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #c1ff72;
+        margin: 1rem 0;
+        font-weight: 500;
+    }
+    .warning-message {
+        background: #fff3cd;
+        color: #000000;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #ffc107;
+        margin: 1rem 0;
+        font-weight: 500;
+    }
+    .error-message {
+        background: #f8d7da;
+        color: #000000;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #dc3545;
+        margin: 1rem 0;
+        font-weight: 500;
+    }
+    .stSuccess {
+        background-color: #d4f8d4;
+        border: 1px solid #c1ff72;
+        color: #000000;
+    }
+    .stInfo {
+        background-color: #e7f3ff;
+        border: 1px solid #c1ff72;
+        color: #000000;
+    }
+    .stWarning {
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #000000;
+    }
+    .stError {
+        background-color: #f8d7da;
+        border: 1px solid #dc3545;
+        color: #000000;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Main header
+    st.markdown("""
+    <div class="main-header">
+        <h1>🌾 Kisan Saathi</h1>
+        <p>Intelligent Agricultural Assistant System</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Initialize pipeline
     @st.cache_resource
@@ -246,31 +313,17 @@ def main():
     
     # Sidebar for settings
     with st.sidebar:
-        st.header("⚙️ Settings")
-        
-        # Language settings
-        st.subheader("Language Settings")
-        source_language = st.selectbox(
-            "Source Language",
-            ["hi-IN", "en-US", "bn-IN", "ta-IN", "te-IN", "mr-IN", "gu-IN", "kn-IN", "ml-IN", "pa-IN"],
-            index=0,
-            help="Language for voice input"
-        )
-        
-        target_language = st.selectbox(
-            "Response Language", 
-            ["hi-IN", "en-US", "bn-IN", "ta-IN", "te-IN", "mr-IN", "gu-IN", "kn-IN", "ml-IN", "pa-IN"],
-            index=0,
-            help="Language for voice output"
-        )
+        st.markdown('<div class="status-card">', unsafe_allow_html=True)
+        st.header("⚙️ System Settings")
+        st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
         # Input type selection
-        st.subheader("Input Type")
+        st.subheader("📝 Input Method")
         input_type = st.radio(
             "Choose input method:",
-            ["Text Query", "Voice Query"],
+            ["Text Query"],
             help="Select how you want to provide your query"
         )
     
@@ -281,86 +334,11 @@ def main():
         st.header("📝 Query Input")
         
         # Text input
-        if input_type == "Text Query":
-            query = st.text_area(
-                "Enter your agricultural query:",
-                placeholder="e.g., What crops should I grow in Punjab this season?",
-                height=100
-            )
-            
-            audio_file = None
-            
-        else:  # Voice Query
-            # Voice recording options
-            voice_option = st.radio(
-                "Choose voice input method:",
-                ["Record Audio", "Upload Audio File"],
-                horizontal=True
-            )
-            
-            query = ""
-            audio_file_path = None
-            
-            if voice_option == "Record Audio":
-                st.info("🎤 Voice Recording Instructions:")
-                st.markdown("""
-                1. **Use your device's voice recorder** to record your query
-                2. **Save as WAV, MP3, or M4A** format
-                3. **Upload the file** using the 'Upload Audio File' option below
-                4. Or use **online voice recorders** like:
-                   - [Online Voice Recorder](https://online-voice-recorder.com/)
-                   - [Voice Recorder Online](https://voice-recorder-online.com/)
-                """)
-                
-                st.info("💡 **Tip**: For best results, speak clearly and avoid background noise")
-            
-            else:  # Upload Audio File
-                audio_file = st.file_uploader(
-                    "Upload audio file:",
-                    type=["wav", "mp3", "m4a", "flac"],
-                    help="Upload an audio file with your query"
-                )
-                
-                if audio_file is not None:
-                    # Save uploaded audio to temporary file
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{audio_file.name.split('.')[-1]}") as tmp_file:
-                        tmp_file.write(audio_file.read())
-                        audio_file_path = tmp_file.name
-                    
-                    # Show audio player
-                    st.audio(audio_file.read(), format=f"audio/{audio_file.name.split('.')[-1]}")
-            
-            if audio_file_path is not None:
-                
-                # Process voice query
-                if st.button("🎤 Process Voice Query", type="primary"):
-                    with st.spinner("Processing voice query..."):
-                        result = pipeline.process_voice_query(
-                            audio_file_path=audio_file_path,
-                            source_language=source_language,
-                            target_language=target_language
-                        )
-                        
-                        if result["success"]:
-                            st.success("✅ Voice query processed successfully!")
-                            
-                            # Display original and translated text
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.info(f"**Original ({source_language}):** {result.get('original_query', 'N/A')}")
-                            with col2:
-                                st.info(f"**Translated (English):** {result.get('translated_query', 'N/A')}")
-                            
-                            # Process the results
-                            display_results(result)
-                            
-                            # Play audio response if available
-                            if result.get("audio_response") and result["audio_response"]["success"]:
-                                audio_file_path = result["audio_response"]["audio_file"]
-                                if os.path.exists(audio_file_path):
-                                    st.audio(audio_file_path, format="audio/wav")
-                        else:
-                            st.error(f"❌ Error: {result.get('error', 'Unknown error')}")
+        query = st.text_area(
+            "Enter your agricultural query:",
+            placeholder="e.g., What crops should I grow in Punjab this season?",
+            height=100
+        )
         
         # Image upload (common for both input types)
         st.subheader("📷 Image Upload (Optional)")
@@ -381,68 +359,78 @@ def main():
                 image_path = tmp_file.name
         
         # Process button for text queries
-        if input_type == "Text Query" and st.button("🚀 Process Query", type="primary"):
+        if st.button("🚀 Process Query", type="primary"):
             if query.strip():
-                with st.spinner("Processing your query..."):
+                # Create progress display container
+                progress_container = st.container()
+                with progress_container:
+                    st.markdown('<div class="progress-container">', unsafe_allow_html=True)
+                    st.subheader("⚡ Processing Progress")
+                    progress_placeholder = st.empty()
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Capture stdout for progress display
+                capture = CaptureStdout(progress_placeholder)
+                
+                with redirect_stdout(capture):
                     result = pipeline.process_query(
                         query=query,
-                        image_path=image_path,
-                        source_language=source_language,
-                        target_language=target_language
+                        image_path=image_path
                     )
-                    
-                    if result["success"]:
-                        st.success("✅ Query processed successfully!")
-                        display_results(result)
-                        
-                        # Play audio response if available
-                        if result.get("audio_response") and result["audio_response"]["success"]:
-                            audio_file_path = result["audio_response"]["audio_file"]
-                            if os.path.exists(audio_file_path):
-                                st.audio(audio_file_path, format="audio/wav")
-                    else:
-                        st.error(f"❌ Error: {result.get('error', 'Unknown error')}")
+                
+                # Clear progress display completely
+                capture.clear()
+                progress_container.empty()
+                
+                # Add a small delay to ensure the container is cleared
+                import time
+                time.sleep(0.3)
+                
+                if result["success"]:
+                    st.markdown('<div class="success-message">✅ Query processed successfully!</div>', unsafe_allow_html=True)
+                    display_results(result)
+                else:
+                    st.markdown(f'<div class="error-message">❌ Error: {result.get("error", "Unknown error")}</div>', unsafe_allow_html=True)
             else:
-                st.warning("⚠️ Please enter a query")
+                st.markdown('<div class="warning-message">⚠️ Please enter a query</div>', unsafe_allow_html=True)
     
     with col_right:
         st.header("📊 System Status")
         
         # Show pipeline status
+        st.markdown('<div class="status-card">', unsafe_allow_html=True)
         st.success("✅ Pipeline Active")
-        st.info(f"🌐 Source Language: {source_language}")
-        st.info(f"🌐 Target Language: {target_language}")
-        st.info(f"🎤 Input Type: {input_type}")
+        st.info(f"📝 Input Type: {input_type}")
+        st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
         # Show available agents
         st.subheader("🤖 Available Agents")
+        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
         st.markdown("""
-        - **Router Agent**: Routes queries to appropriate specialists
-        - **Crop Recommendation**: ML-based crop suggestions
-        - **Disease Diagnosis**: Image-based disease identification
-        - **Government Schemes**: Agricultural subsidy information
-        - **Price Detection**: Market price analysis
-        - **Synthesizer**: Combines all results
+        - **🔀 Router Agent**: Routes queries to appropriate specialists
+        - **🌱 Crop Recommendation**: ML-based crop suggestions
+        - **🔬 Disease Diagnosis**: Image-based disease identification
+        - **🏛️ Government Schemes**: Agricultural subsidy information
+        - **💰 Price Detection**: Market price analysis
+        - **🔄 Synthesizer**: Combines all results
         """)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # API status
-        st.subheader("🔧 API Status")
-        google_apis = pipeline.google_apis
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("**Speech-to-Text APIs:**")
-            st.write(f"Whisper (Primary): {'✅' if hasattr(google_apis, 'whisper_model') else '❌'}")
-            st.write(f"Speech Recognition (Fallback): {'✅' if google_apis.recognizer else '❌'}")
-        
-        with col2:
-            st.write("**Text-to-Speech APIs:**")
-            st.write(f"gTTS (Primary): {'✅' if hasattr(google_apis, '_gtts_text_to_speech') else '❌'}")
-            st.write(f"pyttsx3 (Fallback): {'✅' if google_apis.tts_engine else '❌'}")
+        # System status
+        st.subheader("⚡ System Features")
+        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+        st.write("**Available Features:**")
+        st.write("• 📝 Text Query Processing")
+        st.write("• 🖼️ Image Analysis")
+        st.write("• 🌾 Crop Recommendation")
+        st.write("• 🔬 Disease Diagnosis")
+        st.write("• 🏛️ Government Schemes")
+        st.write("• 💰 Market Price Analysis")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def display_results(result: Dict[str, Any]):
     """Display processing results in a user-friendly format"""
@@ -458,65 +446,83 @@ def display_results(result: Dict[str, Any]):
         st.subheader("📋 Response Summary")
         
         if synthesized:
-            st.write(f"**Summary:** {synthesized.get('summary', 'No summary available')}")
-            st.write(f"**Confidence:** {synthesized.get('confidence_score', 0):.2f}")
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+            st.write(f"**📝 Summary:** {synthesized.get('summary', 'No summary available')}")
+            st.write(f"**🎯 Confidence:** {synthesized.get('confidence_score', 0):.2f}")
             
             if synthesized.get('key_insights'):
-                st.write("**Key Insights:**")
+                st.write("**💡 Key Insights:**")
                 for insight in synthesized['key_insights']:
                     st.write(f"• {insight}")
+            st.markdown('</div>', unsafe_allow_html=True)
         
         if routing:
-            st.write(f"**Routed to:** {routing.get('agent_type', 'Unknown')} agent")
-            st.write(f"**Routing Confidence:** {routing.get('confidence', 0):.2f}")
+            st.markdown('<div class="status-card">', unsafe_allow_html=True)
+            st.write(f"**🔀 Routed to:** {routing.get('agent_type', 'Unknown')} agent")
+            st.write(f"**📊 Routing Confidence:** {routing.get('confidence', 0):.2f}")
+            st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
         st.subheader("🔍 Detailed Analysis")
         
         if synthesized and synthesized.get('detailed_analysis'):
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
             st.write(synthesized['detailed_analysis'])
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.info("No detailed analysis available")
+            st.info("ℹ️ No detailed analysis available")
     
     with tab3:
         st.subheader("🎯 Actionable Recommendations")
         
         if synthesized and synthesized.get('actionable_recommendations'):
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
             for i, recommendation in enumerate(synthesized['actionable_recommendations'], 1):
                 st.write(f"{i}. {recommendation}")
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
-            st.info("No specific recommendations available")
+            st.info("ℹ️ No specific recommendations available")
         
         if synthesized and synthesized.get('next_steps'):
-            st.write("**Next Steps:**")
+            st.markdown('<div class="status-card">', unsafe_allow_html=True)
+            st.write("**📋 Next Steps:**")
             for step in synthesized['next_steps']:
                 st.write(f"• {step}")
+            st.markdown('</div>', unsafe_allow_html=True)
         
         if synthesized and synthesized.get('risk_factors'):
-            st.write("**Risk Factors:**")
+            st.markdown('<div class="status-card" style="border-left-color: #DC3545;">', unsafe_allow_html=True)
+            st.write("**⚠️ Risk Factors:**")
             for risk in synthesized['risk_factors']:
-                st.write(f"⚠️ {risk}")
+                st.write(f"• {risk}")
+            st.markdown('</div>', unsafe_allow_html=True)
     
     with tab4:
         st.subheader("📊 Technical Details")
         
         # Show routing information
         if routing:
-            st.write("**Routing Information:**")
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+            st.write("**🔀 Routing Information:**")
             st.json(routing)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         # Show agent results
         if agent_results:
-            st.write("**Agent Results:**")
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+            st.write("**🤖 Agent Results:**")
             for agent_name, agent_result in agent_results.items():
                 st.write(f"**{agent_name.replace('_', ' ').title()}:**")
                 st.json(agent_result)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         # Show processing metadata
         metadata = result.get("processing_metadata", {})
         if metadata:
-            st.write("**Processing Metadata:**")
+            st.markdown('<div class="status-card">', unsafe_allow_html=True)
+            st.write("**⚙️ Processing Metadata:**")
             st.json(metadata)
+            st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
