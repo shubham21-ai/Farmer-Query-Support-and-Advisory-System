@@ -1,4 +1,5 @@
 # 🌾 Farmer Assistant Bot
+![Uploading Screenshot 2025-09-28 at 3.41.12 PM.png…]()
 
 A comprehensive agricultural intelligence system that provides farmers with crop recommendations, disease diagnosis, government scheme information, and market price analysis through an intelligent conversational interface with voice support.
 
