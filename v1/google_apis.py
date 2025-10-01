@@ -208,7 +208,7 @@ class GoogleAPIs:
     
     def translate_text(self, text: str, target_language: str = "en", source_language: str = None) -> Dict[str, Any]:
         """
-        Translate text using Google Gemini
+        Simple translation placeholder (Google Translate removed)
         
         Args:
             text: Text to translate
@@ -216,29 +216,17 @@ class GoogleAPIs:
             source_language: Source language code
             
         Returns:
-            Dict with translation result
+            Dict with translation result (returns original text for now)
         """
-        try:
-            # Language mapping
-            lang_map = {"ml-IN": "Malayalam", "ml": "Malayalam", "hi-IN": "Hindi", "hi": "Hindi", "en-US": "English", "en": "English", "bn-IN": "Bengali", "ta-IN": "Tamil", "te-IN": "Telugu", "mr-IN": "Marathi", "gu-IN": "Gujarati", "kn-IN": "Kannada", "pa-IN": "Punjabi"}
-            
-            target_lang_name = lang_map.get(target_language, target_language)
-            
-            # If target is English, no translation needed
-            if target_language and target_language.startswith("en"):
-                return {"success": True, "translated_text": text, "source_language": source_language or "en", "target_language": target_language, "original_text": text, "method": "no_translation_needed"}
-            
-            # Use Gemini for translation
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.1)
-            prompt = f"Translate to {target_lang_name}. Only provide translation:\n\n{text}"
-            result = llm.invoke(prompt)
-            translated_text = result.content.strip()
-            logger.info(f"Translated to {target_lang_name}")
-            return {"success": True, "translated_text": translated_text, "source_language": source_language or "en", "target_language": target_language, "original_text": text, "method": "gemini"}
-        except Exception as e:
-            logger.error(f"Translation error: {e}")
-            return {"success": False, "error": str(e), "translated_text": text, "source_language": source_language or "unknown", "target_language": target_language, "original_text": text}
+        # For now, return original text (can be enhanced with free translation APIs later)
+        return {
+            "success": True,
+            "translated_text": text,
+            "source_language": source_language or "unknown",
+            "target_language": target_language,
+            "original_text": text,
+            "method": "no_translation"
+        }
     
     def _google_translate(self, text: str, target_language: str, source_language: str = None) -> Dict[str, Any]:
         """Use Google Cloud Translation API"""

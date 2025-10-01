@@ -101,26 +101,6 @@ class DataFetcher:
                 return float(location.latitude), float(location.longitude)
         except Exception as e:
             logger.error(f"Geocoding failed: {e}")
-            # Fallback to known coordinates
-            location_coords = {
-                "kharagpur": (22.3149, 87.3105),
-                "kolkata": (22.5726, 88.3639),
-                "mumbai": (19.0760, 72.8777),
-                "delhi": (28.7041, 77.1025),
-                "bengaluru": (12.9716, 77.5946),
-                "chennai": (13.0827, 80.2707),
-                "hyderabad": (17.3850, 78.4867),
-                "pune": (18.5204, 73.8567),
-                "ahmedabad": (23.0225, 72.5714),
-                "jaipur": (26.9124, 75.7873)
-            }
-            
-            location_lower = location_text.lower()
-            for city, coords in location_coords.items():
-                if city in location_lower or location_lower in city:
-                    logger.info(f"Using fallback coordinates for {city}")
-                    return coords
-        
         return None
     
     def fetch_weather_data(self, lat: float, lon: float) -> Optional[Dict[str, float]]:

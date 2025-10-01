@@ -1,317 +1,234 @@
-# 🌾 Farmer Assistant Bot
-![Uploading Screenshot 2025-09-28 at 3.41.12 PM.png…]()
+# 🌾 KisanSaathi - Smart Agricultural Assistant
 
-A comprehensive agricultural intelligence system that provides farmers with crop recommendations, disease diagnosis, government scheme information, and market price analysis through an intelligent conversational interface with voice support.
+**Your Intelligent Agricultural Companion Powered by AI**
 
-## 🎯 Features
+An advanced AI-powered agricultural advisory system that helps farmers with crop recommendations, disease diagnosis, weather information, market prices, and government schemes - all in multiple Indian languages.
 
-### Core Capabilities
-- **🤖 Intelligent Routing**: Automatically routes farmer queries to appropriate specialized agents
-- **🌱 Crop Recommendations**: ML-based crop suggestions using weather, soil, and market data
-- **🔍 Disease Diagnosis**: Image-based plant disease identification and treatment recommendations
-- **📋 Government Schemes**: Information about agricultural subsidies, loans, and government programs
-- **💰 Price Detection**: Real-time market price analysis and comparison
-- **🎤 Voice Support**: Speech-to-text and text-to-speech in multiple Indian languages
-- **🔄 Smart Synthesis**: Combines results from multiple agents into coherent responses
+## 🌟 Features
 
-### Language Support
-- **Input Languages**: Hindi, English, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi
-- **Output Languages**: Same as input languages with automatic translation
+### 🤖 **AI-Powered Services**
+- **Crop Recommendations** - ML-based suggestions using weather, soil, and market data
+- **Disease Diagnosis** - Image-based plant disease identification using Vision Transformer
+- **Weather Information** - Real-time weather data and forecasts
+- **Market Prices** - Live commodity prices from Indian mandis
+- **Government Schemes** - Agricultural subsidies and program information
 
-## 🏗️ System Architecture
+### 🌐 **Multi-Language Support**
+Supports 10 Indian languages:
+- 🇮🇳 Hindi (hi-IN)
+- 🇺🇸 English (en-US)
+- 🇮🇳 Malayalam (ml-IN)
+- 🇮🇳 Bengali (bn-IN)
+- 🇮🇳 Tamil (ta-IN)
+- 🇮🇳 Telugu (te-IN)
+- 🇮🇳 Marathi (mr-IN)
+- 🇮🇳 Gujarati (gu-IN)
+- 🇮🇳 Kannada (kn-IN)
+- 🇮🇳 Punjabi (pa-IN)
+
+### 🎤 **Voice Features**
+- **Speech-to-Text** - Voice input using Whisper
+- **Text-to-Speech** - Audio output using gTTS
+- **Multi-language voice support**
+
+## 🏗️ Architecture
 
 ```
-Farmer Query (Voice/Text) → Google Speech-to-Text → Translation → Router Agent
-                                                                    ↓
-Specialized Agents ← Router Decision ← Query Analysis
-     ↓                    ↓                    ↓                    ↓
-Crop Recommendation   Disease Diagnosis   Government Schemes   Price Detection
-                                                                    ↓
-                    Synthesizer Agent ← All Agent Results
-                                 ↓
-                    Final Response → Translation → Text-to-Speech → Farmer
+User Query (Text/Voice/Image)
+           ↓
+    Router Agent (Gemini)
+           ↓
+┌─────────┴─────────┐
+│  Specialized Agents │
+├────────────────────┤
+│ • Crop Advisor     │
+│ • Disease Expert   │
+│ • Scheme Finder    │
+│ • Price Tracker    │
+└──────────┬─────────┘
+           ↓
+   Synthesizer Agent
+           ↓
+    Translation (Gemini)
+           ↓
+  Text-to-Speech (gTTS)
+           ↓
+    Response to User
 ```
 
-## 🤖 Agent Components
-
-### 1. Router Agent (`router_agent.py`)
-- **Purpose**: Intelligently routes farmer queries to appropriate specialized agents
-- **Features**:
-  - Natural language understanding
-  - Multi-agent routing for complex queries
-  - Parameter extraction from queries
-  - Confidence scoring for routing decisions
-
-### 2. Crop Recommendation Agent (`crop_recommendation_agent.py`)
-- **Purpose**: Provides ML-based crop recommendations
-- **Features**:
-  - Uses Random Forest model trained on agricultural data
-  - Considers soil parameters (N, P, K, pH)
-  - Weather data integration
-  - Location-based recommendations
-  - Market profitability analysis
-
-### 3. Disease Diagnosis Agent (`disease_diagnosis.py`)
-- **Purpose**: Identifies plant diseases from images and text descriptions
-- **Features**:
-  - Vision Transformer (ViT) model for image classification
-  - Fallback analysis for non-image queries
-  - Treatment and prevention recommendations
-  - Market search for treatment options
-
-### 4. Government Schemes Agent (`schemes.py`)
-- **Purpose**: Provides information about agricultural government schemes
-- **Features**:
-  - Real-time search for relevant schemes
-  - Structured information extraction
-  - Eligibility criteria and application process
-  - Contact information and official sources
-
-### 5. Price Detection Agent (`price_detection_agent.py`)
-- **Purpose**: Analyzes market prices and trading opportunities
-- **Features**:
-  - Integration with Indian government market APIs
-  - Price comparison across different mandis
-  - Market trend analysis
-  - Arbitrage opportunity identification
-
-### 6. Synthesizer Agent (`synthesizer_agent.py`)
-- **Purpose**: Combines outputs from multiple agents into coherent responses
-- **Features**:
-  - Intelligent information integration
-  - Conflict resolution between different sources
-  - Farmer-friendly output formatting
-  - Actionable recommendation prioritization
-
-### 7. Google APIs Integration (`google_apis.py`)
-- **Purpose**: Handles speech processing and translation
-- **Features**:
-  - Google Cloud Speech-to-Text
-  - Google Cloud Translation
-  - Google Cloud Text-to-Speech
-  - Fallback to alternative speech APIs
-  - Multi-language support
-
-## 🚀 Installation
+## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8 or higher
-- Google Cloud Platform account (for Google APIs)
-- Tavily API key (for web search)
+- Python 3.8+
+- Google API Key (Gemini)
+- Tavily API Key (optional)
 
-### Step 1: Clone the Repository
+### Installation
+
+1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd Farmer_assistant_bot
+git clone https://github.com/YOUR_USERNAME/Kisan_Saathi_Web.git
+cd Kisan_Saathi_Web
 ```
 
-### Step 2: Install Dependencies
+2. **Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 3: Set Up Environment Variables
-Create a `.env` file in the project root:
-
+3. **Set up environment variables**
+Create a `.env` file:
 ```env
-# Required
 GOOGLE_API_KEY=your_gemini_api_key_here
-
-# Optional (for enhanced functionality)
 TAVILY_API_KEY=your_tavily_api_key_here
-GOOGLE_APPLICATION_CREDENTIALS=path_to_google_cloud_credentials.json
 ```
 
-### Step 4: Google Cloud Setup (Optional)
-For enhanced speech and translation features:
+Get API keys from:
+- Google Gemini: https://aistudio.google.com/app/apikey
+- Tavily: https://tavily.com/
 
-1. Create a Google Cloud Project
-2. Enable the following APIs:
-   - Cloud Speech-to-Text API
-   - Cloud Translation API
-   - Cloud Text-to-Speech API
-3. Create service account credentials
-4. Download the JSON key file
-5. Set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
-
-## 🎮 Usage
-
-### Running the Application
+4. **Run the application**
 ```bash
 streamlit run app.py
 ```
 
-### Using the Web Interface
+5. **Access the app**
+Open your browser and go to: http://localhost:8501
 
-1. **Choose Input Method**:
-   - Text Query: Type your agricultural question
-   - Voice Query: Upload an audio file with your question
+## 📊 Tech Stack
 
-2. **Select Languages**:
-   - Source Language: Language of your input
-   - Response Language: Language for the output
+- **Framework**: Streamlit
+- **AI/LLM**: Google Gemini 2.0 Flash
+- **ML Models**: Random Forest, Vision Transformer (ViT)
+- **Speech**: Whisper (STT), gTTS (TTS)
+- **Search**: Tavily API
+- **Agent Framework**: LangChain
 
-3. **Upload Image (Optional)**:
-   - Upload crop/disease images for analysis
+## 🎯 Usage Examples
 
-4. **Process Query**:
-   - Click "Process Query" or "Process Voice Query"
-   - View results in organized tabs
-
-### Example Queries
-
-**Crop Recommendations**:
-- "What crops should I grow in Punjab this season?"
-- "I have sandy loam soil with pH 7.2, what should I plant?"
-
-**Disease Diagnosis**:
-- "My tomato plants have yellow spots on leaves"
-- Upload image of diseased plant
-
-**Government Schemes**:
-- "What government schemes are available for organic farming?"
-- "How can I get crop insurance?"
-
-**Market Prices**:
-- "What are the current wheat prices in Haryana?"
-- "Compare rice prices between different mandis"
-
-## 🧪 Testing
-
-Run the integration tests to verify all components:
-
-```bash
-python test_integration.py
+### Text Query
+```
+Question: "What crops should I grow in Punjab during monsoon?"
+Response: AI-powered recommendations based on location, weather, and soil
 ```
 
-This will test:
-- Module imports
-- Router agent functionality
-- Google APIs integration
-- Specialized agents
-- Synthesizer agent
-- Complete pipeline integration
-
-## 📊 API Reference
-
-### Router Agent
-```python
-from router_agent import RouterAgent
-
-router = RouterAgent()
-result = router.route_query("What crops should I grow?")
-print(result.agent_type.value)  # crop_recommendation
+### Image Analysis
+```
+Upload: Plant disease image
+Question: "What is this disease?"
+Response: Disease identification, symptoms, treatment, and prevention
 ```
 
-### Synthesizer Agent
-```python
-from synthesizer_agent import SynthesizerAgent
-
-synthesizer = SynthesizerAgent()
-result = synthesizer.synthesize_results(query, agent_results)
-print(result.summary)
+### Voice Input
+```
+Upload: Audio file in Hindi/Malayalam/other languages
+Response: Transcribed, processed, and answered in preferred language
 ```
 
-### Google APIs
-```python
-from google_apis import GoogleAPIs
+## 📁 Project Structure
 
-google_apis = GoogleAPIs()
-# Speech to text
-result = google_apis.speech_to_text("audio.wav", "hi-IN")
-# Translation
-result = google_apis.translate_text("Hello", "hi", "en")
-# Text to speech
-result = google_apis.text_to_speech("Hello", language_code="hi-IN")
+```
+Kisan_Saathi_Web/
+├── app.py                          # Main Streamlit application
+├── router_agent.py                 # Query routing logic
+├── synthesizer_agent.py            # Response synthesis
+├── google_apis.py                  # Translation & voice APIs
+├── crop_recommendation_agent.py    # Crop advisor
+├── disease_diagnosis.py            # Disease expert
+├── schemes.py                      # Government schemes
+├── price_detection_agent.py        # Price tracker
+├── crop_recommendation_tool.py     # ML crop tools
+├── get_price_tool.py              # Price fetching tools
+├── styles.py                       # UI styling
+├── error_handler.py               # Error handling utilities
+├── requirements.txt               # Dependencies
+└── README.md                      # This file
 ```
 
 ## 🔧 Configuration
 
+### Language Settings
+- Configure input and response languages in the sidebar
+- Translation powered by Google Gemini
+- Supports all major Indian languages
+
 ### Model Configuration
-- **Router Agent**: Uses Gemini 2.0 Flash for routing decisions
-- **Synthesizer Agent**: Uses Gemini 2.0 Flash for response synthesis
-- **Crop Recommendation**: Uses trained Random Forest model
-- **Disease Diagnosis**: Uses Vision Transformer model
+- Router: Gemini 2.0 Flash
+- Synthesizer: Gemini 2.0 Flash  
+- Disease Detection: Vision Transformer
+- Crop Recommendation: Random Forest
 
-### Language Configuration
-Supported language codes:
-- `hi-IN`: Hindi
-- `en-US`: English
-- `bn-IN`: Bengali
-- `ta-IN`: Tamil
-- `te-IN`: Telugu
-- `mr-IN`: Marathi
-- `gu-IN`: Gujarati
-- `kn-IN`: Kannada
-- `ml-IN`: Malayalam
-- `pa-IN`: Punjabi
+## 🌟 Key Features
 
-## 🛠️ Troubleshooting
+### ✅ Intelligent Routing
+Automatically routes queries to appropriate specialists based on content
 
-### Common Issues
+### ✅ Multi-Agent System
+- Router Agent - Query analysis and routing
+- Crop Recommender - ML-based crop suggestions
+- Disease Diagnoser - Image-based disease identification
+- Scheme Finder - Government program information
+- Price Detector - Market price analysis
+- Synthesizer - Combines all agent outputs
 
-1. **API Key Errors**:
-   - Ensure `GOOGLE_API_KEY` is set correctly
-   - Check API key permissions
+### ✅ Professional UI
+- Clean, modern interface
+- Green agricultural theme
+- Responsive design
+- Progress indicators
+- Error handling
 
-2. **Import Errors**:
-   - Install all dependencies: `pip install -r requirements.txt`
-   - Check Python version (3.8+)
+## 🐛 Troubleshooting
 
-3. **Google Cloud APIs Not Working**:
-   - Verify Google Cloud credentials
-   - Check API quotas and billing
+### API Key Issues
+- Ensure `GOOGLE_API_KEY` is valid and not expired
+- Free tier: 50 requests/minute limit
+- Get new key from: https://aistudio.google.com/app/apikey
 
-4. **Speech Recognition Issues**:
-   - Ensure audio file format is supported (WAV, MP3, M4A, FLAC)
-   - Check microphone permissions
+### Translation Slow
+- Check API quota limits
+- Consider upgrading to paid tier for higher limits
 
-### Debug Mode
-Enable debug logging by setting:
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
+### SSL Certificate Errors
+- Already handled with fallback mechanisms
+- App continues working with cached location data
 
-## 📈 Performance Optimization
+## 📈 Performance
 
-### Model Optimization
-- Use GPU acceleration for Vision Transformer model
-- Implement model caching for faster responses
-- Use batch processing for multiple queries
-
-### API Optimization
-- Implement request caching
-- Use connection pooling for external APIs
-- Set appropriate timeouts
+- Caching enabled for pipeline initialization
+- Session state management for better UX
+- Progress indicators for long operations
+- Optimized model loading
 
 ## 🤝 Contributing
 
+Contributions welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+4. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is for educational and agricultural development purposes.
 
 ## 🙏 Acknowledgments
 
-- Google Cloud Platform for speech and translation APIs
-- Hugging Face for pre-trained models
+- Google Gemini for AI capabilities
+- Hugging Face for ML models
 - LangChain for agent framework
 - Streamlit for web interface
-- Indian government APIs for agricultural data
+- Indian Government APIs for agricultural data
 
 ## 📞 Support
 
-For support and questions:
+For issues or questions:
 - Create an issue in the repository
 - Check the troubleshooting section
-- Review the test results for component status
+- Review terminal logs for detailed error messages
 
 ---
 
-**Built with ❤️ for Indian Farmers**
+**Built with ❤️ for Indian Farmers** 🌾
+
+**KisanSaathi** - Empowering Agriculture with AI

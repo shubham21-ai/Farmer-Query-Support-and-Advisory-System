@@ -127,51 +127,10 @@ def get_weather_data(location: str) -> str:
     try:
         from geopy.geocoders import Nominatim
         import requests
-        import ssl
         
-        # Create SSL context that doesn't verify certificates
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        # Try geocoding with SSL bypass
-        try:
-            # First try with SSL verification disabled
-            geolocator = Nominatim(user_agent="crop-agent", timeout=10)
-            location_obj = geolocator.geocode(location)
-        except:
-            # If that fails, try with a known location fallback
-            location_coords = {
-                "kharagpur": (22.3149, 87.3105),
-                "kolkata": (22.5726, 88.3639),
-                "mumbai": (19.0760, 72.8777),
-                "delhi": (28.7041, 77.1025),
-                "bengaluru": (12.9716, 77.5946),
-                "chennai": (13.0827, 80.2707),
-                "hyderabad": (17.3850, 78.4867),
-                "pune": (18.5204, 73.8567),
-                "ahmedabad": (23.0225, 72.5714),
-                "jaipur": (26.9124, 75.7873)
-            }
-            
-            location_lower = location.lower()
-            lat, lon = None, None
-            
-            for city, coords in location_coords.items():
-                if city in location_lower or location_lower in city:
-                    lat, lon = coords
-                    break
-            
-            if lat is None or lon is None:
-                # Default to Kolkata if location not found
-                lat, lon = 22.5726, 88.3639
-                
-            class MockLocation:
-                def __init__(self, lat, lon):
-                    self.latitude = lat
-                    self.longitude = lon
-            
-            location_obj = MockLocation(lat, lon)
+        # Geocode location
+        geolocator = Nominatim(user_agent="crop-agent")
+        location_obj = geolocator.geocode(location)
         
         if not location_obj:
             return "Error: Could not geocode location"
